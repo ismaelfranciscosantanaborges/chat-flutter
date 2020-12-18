@@ -1,6 +1,11 @@
+import 'dart:io';
+
 import 'package:chat_flutter/pages/pages.dart';
+import 'package:chat_flutter/services/auth_service.dart';
 import 'package:chat_flutter/widgets/widgets.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class SingUpPage extends StatelessWidget {
   static const String route = 'SingUpPage';
@@ -47,6 +52,7 @@ class __FormState extends State<_Form> {
 
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 40),
       child: Column(
@@ -70,11 +76,55 @@ class __FormState extends State<_Form> {
           ),
           ButtonBlue(
             title: 'Registrarte',
-            onPressed: () {
+            onPressed: () async {
               print(nameCtrl.text);
               print(emailCtrl.text);
               print(passCtrl.text);
+
+              final isOk = await authService.register(nameCtrl.text.trim(),
+                  emailCtrl.text.trim(), passCtrl.text.trim());
+
+              if (isOk) {
+                Navigator.pop(context);
+              } else {
+                _customShowDialog(
+                    title: 'Error in the register',
+                    subTitle: 'dont can saved this register in the database.');
+              }
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  _customShowDialog({String title, String subTitle}) {
+    if (Platform.isIOS) {
+      return showCupertinoDialog(
+        context: context,
+        builder: (_) => CupertinoAlertDialog(
+          title: Text(title),
+          content: Text(subTitle),
+          actions: [
+            CupertinoDialogAction(
+              child: Text('Ok'),
+              onPressed: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: Text(subTitle),
+        actions: [
+          MaterialButton(
+            child: Text('Ok'),
+            onPressed: () => Navigator.pop(context),
+            textColor: Colors.blue,
           ),
         ],
       ),

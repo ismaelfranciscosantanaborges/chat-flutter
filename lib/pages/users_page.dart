@@ -1,5 +1,8 @@
 import 'package:chat_flutter/models/user.dart';
+import 'package:chat_flutter/pages/pages.dart';
+import 'package:chat_flutter/services/auth_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 
 class UsersPage extends StatefulWidget {
@@ -14,19 +17,21 @@ class _UsersPageState extends State<UsersPage> {
       RefreshController(initialRefresh: false);
 
   final friends = [
-    User(udi: '1', name: 'Lucas', email: 'marionis@gmail.com', onLine: false),
-    User(udi: '2', name: 'Mendez', email: 'mendez@gmail.com', onLine: true),
-    User(udi: '3', name: 'Samuel', email: 'samuel@gmail.com', onLine: true),
+    User(uid: '1', name: 'Lucas', email: 'marionis@gmail.com', online: false),
+    User(uid: '2', name: 'Mendez', email: 'mendez@gmail.com', online: true),
+    User(uid: '3', name: 'Samuel', email: 'samuel@gmail.com', online: true),
     User(
-        udi: '4', name: 'Dislenia', email: 'dislenia@gmail.com', onLine: false),
-    User(udi: '5', name: 'Daris', email: 'daris@gmail.com', onLine: true),
+        uid: '4', name: 'Dislenia', email: 'dislenia@gmail.com', online: false),
+    User(uid: '5', name: 'Daris', email: 'daris@gmail.com', online: true),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final user = Provider.of<AuthService>(context).user;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('My name', style: TextStyle(color: Colors.black54)),
+        title: Text(user?.name ?? '', style: TextStyle(color: Colors.black54)),
         backgroundColor: Colors.white,
         elevation: 1,
         actions: [
@@ -39,7 +44,10 @@ class _UsersPageState extends State<UsersPage> {
         ],
         leading: IconButton(
           icon: Icon(Icons.exit_to_app, color: Colors.black54),
-          onPressed: () {},
+          onPressed: () {
+            Navigator.pushReplacementNamed(context, LoginPage.route);
+            AuthService.deleteToken();
+          },
         ),
       ),
       body: SmartRefresher(
@@ -76,7 +84,7 @@ class _UsersPageState extends State<UsersPage> {
         width: 15,
         height: 15,
         decoration: BoxDecoration(
-          color: user.onLine ? Colors.green[300] : Colors.red,
+          color: user.online ? Colors.green[300] : Colors.red,
           borderRadius: BorderRadius.circular(50),
         ),
       ),

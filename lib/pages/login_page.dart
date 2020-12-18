@@ -1,6 +1,11 @@
+import 'dart:io';
+
 import 'package:chat_flutter/pages/pages.dart';
+import 'package:chat_flutter/services/auth_service.dart';
 import 'package:chat_flutter/widgets/widgets.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class LoginPage extends StatelessWidget {
   static const String route = 'LoginPage';
@@ -46,6 +51,7 @@ class __FormState extends State<_Form> {
 
   @override
   Widget build(BuildContext context) {
+    final authService = Provider.of<AuthService>(context);
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 40),
       child: Column(
@@ -64,13 +70,59 @@ class __FormState extends State<_Form> {
           ),
           ButtonBlue(
             title: 'Ingresar',
-            onPressed: () {
-              print(emailCtrl.text);
-              print(passCtrl.text);
-            },
+            onPressed: authService.autenticando
+                ? null
+                : () async {
+                    FocusScope.of(context).unfocus();
+                    final resp = await authService.login(
+                        emailCtrl.text.trim(), passCtrl.text.trim());
+
+                    if (resp) {
+                      Navigator.pushReplacementNamed(context, UsersPage.route);
+                    } else {
+                      _showDialog(
+                        context,
+                        'Error for Authentications',
+                        'The email or password is invalidate',
+                      );
+                    }
+                  },
           ),
         ],
       ),
     );
+  }
+
+  _showDialog(BuildContext context, String title, String subTitle) {
+    if (Platform.isIOS) {
+      showCupertinoDialog(
+        context: context,
+        builder: (_) => CupertinoAlertDialog(
+          content: Text(subTitle),
+          title: Text(title),
+          actions: [
+            CupertinoDialogAction(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Ok'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text(title),
+          content: Text(subTitle),
+          actions: [
+            MaterialButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Ok'),
+              textColor: Colors.blue,
+            ),
+          ],
+        ),
+      );
+    }
   }
 }
