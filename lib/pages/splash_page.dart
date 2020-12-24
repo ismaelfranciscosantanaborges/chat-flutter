@@ -1,6 +1,7 @@
 import 'package:chat_flutter/models/user.dart';
 import 'package:chat_flutter/pages/pages.dart';
 import 'package:chat_flutter/services/auth_service.dart';
+import 'package:chat_flutter/services/socket_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -20,11 +21,13 @@ class SplashPage extends StatelessWidget {
 
   Future checkLoginState(BuildContext context) async {
     final authService = Provider.of<AuthService>(context, listen: false);
+    final socketService = Provider.of<SocketService>(context, listen: false);
 
     final isAuth = await authService.isLoginIn();
 
     if (isAuth) {
       // Navigator.pushReplacementNamed(context, UsersPage.route);
+      socketService.connect();
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(

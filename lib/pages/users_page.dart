@@ -1,6 +1,9 @@
 import 'package:chat_flutter/models/user.dart';
 import 'package:chat_flutter/pages/pages.dart';
 import 'package:chat_flutter/services/auth_service.dart';
+import 'package:chat_flutter/services/chat_service.dart';
+import 'package:chat_flutter/services/socket_service.dart';
+import 'package:chat_flutter/services/users_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
@@ -16,18 +19,18 @@ class _UsersPageState extends State<UsersPage> {
   RefreshController _refreshController =
       RefreshController(initialRefresh: false);
 
-  final friends = [
-    User(uid: '1', name: 'Lucas', email: 'marionis@gmail.com', online: false),
-    User(uid: '2', name: 'Mendez', email: 'mendez@gmail.com', online: true),
-    User(uid: '3', name: 'Samuel', email: 'samuel@gmail.com', online: true),
-    User(
-        uid: '4', name: 'Dislenia', email: 'dislenia@gmail.com', online: false),
-    User(uid: '5', name: 'Daris', email: 'daris@gmail.com', online: true),
-  ];
+  List<User> users = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _onRefresh();
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<AuthService>(context).user;
+    final socketService = Provider.of<SocketService>(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -37,7 +40,7 @@ class _UsersPageState extends State<UsersPage> {
         actions: [
           Container(
             margin: EdgeInsets.only(right: 10),
-            child: true
+            child: socketService.serverStatus == ServerStatus.Online
                 ? Icon(Icons.check_circle, color: Colors.blue[300])
                 : Icon(Icons.offline_bolt, color: Colors.red),
           ),
@@ -45,6 +48,7 @@ class _UsersPageState extends State<UsersPage> {
         leading: IconButton(
           icon: Icon(Icons.exit_to_app, color: Colors.black54),
           onPressed: () {
+            socketService.disconnect();
             Navigator.pushReplacementNamed(context, LoginPage.route);
             AuthService.deleteToken();
           },
@@ -63,38 +67,47 @@ class _UsersPageState extends State<UsersPage> {
   ListView _buildListView() {
     return ListView.separated(
       physics: BouncingScrollPhysics(),
-      itemBuilder: (_, i) => _buildListTileUser(friends[i]),
+      itemBuilder: (_, i) => _buildListTileUser(users[i]),
       separatorBuilder: (_, i) => Divider(),
-      itemCount: friends.length,
+      itemCount: users.length,
     );
   }
 
   ListTile _buildListTileUser(User user) {
     return ListTile(
-      title: Text(user.name ?? ''),
-      subtitle: Text(user.email),
-      leading: CircleAvatar(
-        backgroundColor: Colors.blue[400],
-        child: Text(
-          user.name.substring(0, 2),
-          style: TextStyle(color: Colors.white),
+        title: Text(user.name ?? ''),
+        subtitle: Text(user.email),
+        leading: CircleAvatar(
+          backgroundColor: Colors.blue[400],
+          child: Text(
+            user.name.substring(0, 2),
+            style: TextStyle(color: Colors.white),
+          ),
         ),
-      ),
-      trailing: Container(
-        width: 15,
-        height: 15,
-        decoration: BoxDecoration(
-          color: user.online ? Colors.green[300] : Colors.red,
-          borderRadius: BorderRadius.circular(50),
+        trailing: Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: user.online ? Colors.green[300] : Colors.red,
+            borderRadius: BorderRadius.circular(50),
+          ),
         ),
-      ),
-    );
+        onTap: () {
+          final chatService = Provider.of<ChatService>(context, listen: false);
+          chatService.userfrom = user;
+          debugPrint(user.name);
+          debugPrint(user.email);
+
+          Navigator.pushNamed(context, ChatPage.route);
+        });
   }
 
   void _onRefresh() async {
-    // monitor network fetch
-    await Future.delayed(Duration(milliseconds: 1000));
-    // if failed,use refreshFailed()
+    final usersService = UsersServices();
+    this.users = await usersService.getUsers();
+
+    setState(() {});
+
     _refreshController.refreshCompleted();
   }
 }

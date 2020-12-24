@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:chat_flutter/pages/pages.dart';
 import 'package:chat_flutter/services/auth_service.dart';
+import 'package:chat_flutter/services/socket_service.dart';
 import 'package:chat_flutter/widgets/widgets.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -52,6 +53,8 @@ class __FormState extends State<_Form> {
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context);
+    final socketService = Provider.of<SocketService>(context);
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 40),
       child: Column(
@@ -78,6 +81,7 @@ class __FormState extends State<_Form> {
                         emailCtrl.text.trim(), passCtrl.text.trim());
 
                     if (resp) {
+                      socketService.connect();
                       Navigator.pushReplacementNamed(context, UsersPage.route);
                     } else {
                       _showDialog(

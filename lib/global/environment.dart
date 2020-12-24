@@ -1,8 +1,10 @@
 import 'dart:io';
 
 class Environment {
-  static String apiUrl =
-      Platform.isIOS ? 'http://localhost:3000/api' : 'http://10.0.2.2:3000/api';
+  static String port = '3001';
+  static String apiUrl = Platform.isIOS
+      ? 'http://localhost:$port/api'
+      : 'http://10.0.2.2:$port/api';
   static String urlSocket =
-      Platform.isIOS ? 'http://localhost:3000' : 'http://10.0.2.2:3000';
+      Platform.isIOS ? 'http://localhost:$port' : 'http://10.0.2.2:$port';
 }

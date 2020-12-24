@@ -1,8 +1,12 @@
 import 'dart:io';
 
+import 'package:chat_flutter/services/auth_service.dart';
+import 'package:chat_flutter/services/chat_service.dart';
+import 'package:chat_flutter/services/socket_service.dart';
 import 'package:chat_flutter/widgets/widgets.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class ChatPage extends StatefulWidget {
   static final String route = 'ChatPage';
@@ -18,12 +22,63 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
 
   List<ChatMessage> _messages = [];
 
+  ChatService chatService;
+  SocketService socketService;
+  AuthService authService;
+
   @override
   void initState() {
     super.initState();
     _textController = TextEditingController();
     _messages = [];
     _isReading = false;
+    chatService = Provider.of<ChatService>(context, listen: false);
+    socketService = Provider.of<SocketService>(context, listen: false);
+    authService = Provider.of<AuthService>(context, listen: false);
+
+    socketService.socket.on('new-message', _listenerMessage);
+
+    _loadMessages();
+  }
+
+  _loadMessages() async {
+    final messages =
+        await this.chatService.getMessages(chatService.userfrom.uid);
+
+    final allMessages = messages
+        .map(
+          (ms) => ChatMessage(
+            text: ms.message,
+            uid: ms.from,
+            controller: AnimationController(
+              vsync: this,
+              duration: Duration(seconds: 0),
+            ),
+          ),
+        )
+        .toList();
+
+    for (var message in allMessages) {
+      message.controller.forward();
+    }
+
+    _messages.insertAll(0, allMessages);
+    setState(() {});
+  }
+
+  void _listenerMessage(dynamic payload) {
+    ChatMessage chatMessage = ChatMessage(
+      controller: AnimationController(
+        vsync: this,
+        duration: Duration(milliseconds: 300),
+      ),
+      uid: payload['uid'],
+      text: payload['message'],
+    );
+
+    _messages.insert(0, chatMessage);
+    chatMessage.controller.forward();
+    setState(() {});
   }
 
   @override
@@ -34,14 +89,18 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
       message.controller.dispose();
     }
     //TODO:OFF the socket
+    socketService.socket.off('new-message');
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final userFrom = chatService.userfrom;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.white,
+        iconTheme: IconThemeData(color: Colors.blue),
         elevation: 1,
         centerTitle: true,
         title: Column(
@@ -49,15 +108,15 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
             CircleAvatar(
               backgroundColor: Colors.blue[100],
               child: Text(
-                'Al',
+                userFrom.name.substring(0, 2),
                 style: TextStyle(fontSize: 12),
               ),
               maxRadius: 14,
             ),
             SizedBox(height: 3),
             Text(
-              'Alisia Duran',
-              style: TextStyle(color: Colors.black87, fontSize: 12),
+              userFrom.name,
+              style: TextStyle(color: Colors.black87, fontSize: 14),
             )
           ],
         ),
@@ -65,18 +124,32 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
       body: Container(
         child: Column(
           children: [
-            Flexible(
-              child: ListView.builder(
-                reverse: true,
-                itemCount: _messages.length,
-                itemBuilder: (_, i) => _messages[i],
-              ),
-            ),
-            Divider(
-              height: 1,
-            ),
+            _buildListMessages(),
+            Divider(height: 1),
             _buildInputChat(),
           ],
+        ),
+      ),
+    );
+  }
+
+  Flexible _buildListMessages() {
+    return Flexible(
+      child: Container(
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: AssetImage(
+              Platform.isIOS
+                  ? 'assets/background_ios.jpg'
+                  : 'assets/background_android.jpg',
+            ),
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: ListView.builder(
+          reverse: true,
+          itemCount: _messages.length,
+          itemBuilder: (_, i) => _messages[i],
         ),
       ),
     );
@@ -86,13 +159,15 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
     return SafeArea(
       child: Container(
         height: 50, //70
-        padding: EdgeInsets.symmetric(horizontal: 8),
+        color: Colors.white,
+        padding: EdgeInsets.only(left: 8, right: 8),
         child: Row(
           children: [
             Flexible(
               child: TextField(
                 controller: _textController,
                 focusNode: _focusNode,
+                textCapitalization: TextCapitalization.sentences,
                 onChanged: (value) {
                   if (value.trim().length > 0) {
                     _isReading = true;
@@ -116,7 +191,7 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
                           : null,
                     )
                   : Container(
-                      margin: EdgeInsets.symmetric(horizontal: 4),
+                      // margin: EdgeInsets.symmetric(horizontal: 4),
                       child: IconTheme(
                         data: IconThemeData(color: Colors.blue[400]),
                         child: IconButton(
@@ -138,6 +213,14 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
   }
 
   _handleSubmitted(String text) {
+    if (text.length <= 0) return;
+
+    socketService.socket.emit('new-message', {
+      'from': authService.user.uid,
+      'to': chatService.userfrom.uid,
+      'message': text
+    });
+
     print(_textController.text);
     _textController.clear();
     _focusNode.requestFocus();
@@ -147,7 +230,7 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
         vsync: this,
         duration: Duration(milliseconds: 400),
       ),
-      uid: '123',
+      uid: authService.user.uid,
       text: text,
     );
 
